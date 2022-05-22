@@ -1,3 +1,5 @@
+# from curses import echo
+import imp
 from itertools import count
 from tkinter import Button
 from selenium import webdriver  
@@ -9,9 +11,11 @@ import time
 import pickle
 import pandas as pd
 from datetime import date
+import sqlalchemy
 import math
 
 from settings import categories as file_categories
+from functions import titleChangeSizeAfterName
 
 options = webdriver.ChromeOptions()
 # options.add_argument("User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36")
@@ -61,6 +65,7 @@ dataframes = []
 
 count = 0
 
+engine = sqlalchemy.create_engine("mysql://pythonless:pythonless@localhost/623030")
 
 today = date.isoformat(date.today())
 
@@ -80,6 +85,23 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 		if title == "НАКЛЕЙКИ И СТИКЕРЫ" or title == "БЛОКИ ДЛЯ ЗАПИСЕЙ":
 			continue
 
+		table_name = False
+		category_file = False
+		title_eng = False
+
+		# Категории из файла
+		for cat in file_categories:
+			if title == cat["title"]: 
+				table_name = cat["table_name"]
+				category_file = cat["category"]
+				title_eng = cat["title_eng"]
+
+		if table_name == False:
+			print("!!!!!!!!! table_name=FALSE")
+
+		if title_eng == False:
+			title_eng = title
+
 		tables = driver.find_elements(by=By.XPATH, value="//div[@class='material']")
 
 		for table in tables:
@@ -92,14 +114,16 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 			# exit()
 			one_side = table.find_element(by=By.XPATH, value="self::node()//tbody/tr[@class='one'][1]")
 			time_to_done = one_side.find_element(by=By.XPATH, value="self::node()//td[@class='time_to_parse']").text
-			one_side_td = one_side.find_elements(by=By.TAG_NAME, value="span")[:-1]
+			# one_side_td = one_side.find_elements(by=By.XPATH, value="self::node()//td[@class='time_to_parse']").text
+			one_side_td = one_side.find_elements(by=By.XPATH, value="self::node()//span[@class='rub']")
 
 
 			obj = {
-				"title": title,
+				"title": titleChangeSizeAfterName(title),
 				"done" : time_to_done,
 				"papper" : papper,
-				"colors" : "4+0"
+				"colors" : "4+0",
+				"category": category_file
 			}
 
 
@@ -107,6 +131,10 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 				price_str = one_side_td[td].text
 				price_list = price_str.split()
 				price = int("".join(price_list))
+
+				print(f"price: {price}")
+				print(f"td: {td}")
+				print(f"theads_td: {theads_td}")
 				
 				obj[f"sborka_{theads_td[td].text}"] = price
 				obj[f"{theads_td[td].text}"] = math.ceil(price+price/100*20)
@@ -121,33 +149,41 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 
 			two_side = table.find_element(by=By.XPATH, value="self::node()//tbody/tr[@class='two'][1]")
 			time_to_done2 = two_side.find_element(by=By.XPATH, value="self::node()//td[@class='time_to_parse']").text
-			two_side_td = two_side.find_elements(by=By.TAG_NAME, value="span")[:-1]
+			# two_side_td = two_side.find_elements(by=By.TAG_NAME, value="span")[:-1]			
+			two_side_td = one_side.find_elements(by=By.XPATH, value="self::node()//span[@class='rub']")
 
 
 			obj2 = {
-				"title": title,
+				"title": titleChangeSizeAfterName(title),
 				"done" : time_to_done2,
 				"papper" : papper,
-				"colors" : "4+4"
+				"colors" : "4+4",
+				"category": category_file
 			}
 
 			for td in range(0,len(two_side_td)):
 				price_str = two_side_td[td].text
 				price_list = price_str.split()
 				price = int("".join(price_list))
+
 				
-				obj2[f"price{td}"] = price
+				obj2[f"sborka_{theads_td[td].text}"] = price
+				obj2[f"{theads_td[td].text}"] = math.ceil(price+price/100*20)
 				
-				obj2[f"price_ext_{td}"] = math.ceil(price+price/100*20)
 
 			items.append(obj2)
+
 			print(items)
 		
 		dataframes.append(pd.DataFrame(items))
 
 		df = pd.DataFrame(items)
 		time.sleep(1)
-		df.to_excel(writer, sheet_name=title, index=None)
+		df.to_excel(writer, sheet_name=title_eng, index=None)
+
+		df.to_sql(name=table_name, con=engine, if_exists='append')
+
+
 		
 		time.sleep(3)
 

@@ -1,5 +1,3 @@
-title = "422 X 101 ЕВРООТКРЫТКА"
-
 def titleChangeSizeAfterName(title):
 		
 	title_list = title.split(" ")
@@ -20,13 +18,3 @@ def titleChangeSizeAfterName(title):
 	title = " ".join(title_list[3:]) + " "  + "".join( [str( title_dict[0]), str(title_dict[1]).lower(), str(title_dict[2])] )
 
 	return title
-
-print(titleChangeSizeAfterName(title))
-# category = False
-
-# for cat in categories:
-
-# 	if title == cat["title"]:
-# 		category = cat["category"]
-
-# print(category)
