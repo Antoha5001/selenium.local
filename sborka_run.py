@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.action_chains import ActionChains
 import time
+from datetime import date
 import pickle
 import pandas as pd
 from datetime import date
@@ -63,7 +64,7 @@ categories = driver.find_elements(by=By.XPATH, value="//span[@otype='offset']/di
 
 dataframes = []
 
-count = 0
+count = 1
 
 engine = sqlalchemy.create_engine("mysql://pythonless:pythonless@localhost/623030")
 
@@ -94,6 +95,7 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 			if title == cat["title"]: 
 				table_name = cat["table_name"]
 				category_file = cat["category"]
+				category_id = cat["category_id"]
 				title_eng = cat["title_eng"]
 
 		if table_name == False:
@@ -119,13 +121,17 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 
 
 			obj = {
+				"id": count,
 				"title": titleChangeSizeAfterName(title),
 				"done" : time_to_done,
 				"papper" : papper,
 				"colors" : "4+0",
-				"category": category_file
+				"category": category_file,
+				"category_id": category_id,
+				"date" : date.today().strftime("%d.%m.%Y")
 			}
 
+			count = count+1
 
 			for td in range(0,len(one_side_td)):
 				price_str = one_side_td[td].text
@@ -154,12 +160,17 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 
 
 			obj2 = {
+				"id": count,
 				"title": titleChangeSizeAfterName(title),
 				"done" : time_to_done2,
 				"papper" : papper,
 				"colors" : "4+4",
-				"category": category_file
+				"category": category_file,
+				"category_id": category_id,
+				"date" : date.today().strftime("%d.%m.%Y")
 			}
+			
+			count = count+1
 
 			for td in range(0,len(two_side_td)):
 				price_str = two_side_td[td].text
@@ -181,7 +192,8 @@ with pd.ExcelWriter(f"{today}_result.xlsx") as writer:
 		time.sleep(1)
 		df.to_excel(writer, sheet_name=title_eng, index=None)
 
-		df.to_sql(name=table_name, con=engine, if_exists='append')
+		# df.to_sql(name=table_name, con=engine, if_exists='append', index=False)
+		df.to_sql(name="ofset", con=engine, if_exists='append', index=False)
 
 
 		
